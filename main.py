@@ -12,7 +12,7 @@ def read_root():
 
 @app.post("/edit-image")
 async def edit_image(prompt: str = Form(...), image: UploadFile = File(...)):
-    # قراءة التوكن من المتغير البيئي
+    # جلب التوكن من المتغير البيئي
     replicate_token = os.getenv("REPLICATE_API_TOKEN")
     if not replicate_token:
         return JSONResponse(content={"error": "Missing REPLICATE_API_TOKEN"}, status_code=500)
@@ -22,13 +22,20 @@ async def edit_image(prompt: str = Form(...), image: UploadFile = File(...)):
     # قراءة الصورة
     image_bytes = await image.read()
 
-    # رفع الصورة إلى replicate
-    output = replicate_client.run(
-        "stability-ai/sdxl:15d2403e41fe3652880582b93e35c8c42ea67802ff8f68e63a6837c8c80c6531",
-        input={
-            "image": image_bytes,
-            "prompt": prompt,
-        }
-    )
+    # تحويل الصورة إلى base64
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    return {"output_url": output}
+    try:
+        # استدعاء النموذج
+        output = replicate_client.run(
+            "fofr/face-to-many:5b58f94235c5fbe65ae9526f6763fd18299834deacbaeead316e121bbee96c18",
+            input={
+                "image": image_base64,
+                "prompt": prompt
+            }
+        )
+
+        return JSONResponse(content={"output": output})
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
