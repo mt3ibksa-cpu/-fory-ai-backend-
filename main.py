@@ -1,8 +1,7 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import JSONResponse
 import replicate
 import os
-import base64
 
 app = FastAPI()
 
@@ -10,32 +9,26 @@ app = FastAPI()
 def read_root():
     return {"message": "Hello from Fory API!"}
 
-@app.post("/edit-image")
-async def edit_image(prompt: str = Form(...), image: UploadFile = File(...)):
-    # جلب التوكن من المتغير البيئي
+
+@app.post("/generate-image")
+async def generate_image(prompt: str = Form(...)):
+    # قراءة التوكن من البيئة
     replicate_token = os.getenv("REPLICATE_API_TOKEN")
     if not replicate_token:
         return JSONResponse(content={"error": "Missing REPLICATE_API_TOKEN"}, status_code=500)
 
+    # إعداد العميل
     replicate_client = replicate.Client(api_token=replicate_token)
 
-    # قراءة الصورة
-    image_bytes = await image.read()
-
-    # تحويل الصورة إلى base64
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
     try:
-        # استدعاء النموذج
+        # تشغيل الموديل المجاني
         output = replicate_client.run(
-            "fofr/face-to-many:5b58f94235c5fbe65ae9526f6763fd18299834deacbaeead316e121bbee96c18",
+            "stability-ai/stable-diffusion:db21e45c5e2618896c0c47392f7af0d39c4f60f36a0136b45fdd0a9a1f40a4e4",
             input={
-                "image": image_base64,
                 "prompt": prompt
             }
         )
 
-        return JSONResponse(content={"output": output})
-
+        return {"image_url": output}
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
